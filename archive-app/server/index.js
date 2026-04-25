@@ -2,8 +2,6 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const session = require("express-session");
-const MongoStore = require("connect-mongo");
-const helmet = require("helmet");
 require("dotenv").config();
 
 const authRoutes = require("./routes/authRoutes");
@@ -11,29 +9,24 @@ const objectRoutes = require("./routes/objectRoutes");
 
 const app = express();
 
-app.use(helmet());
-app.use(express.json());
-
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: "http://localhost:3000",
     credentials: true
   })
 );
 
+app.use(express.json());
+
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "archive-secret-key",
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI
-    }),
     cookie: {
+      secure: false,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 1000 * 60 * 60 * 24
+      sameSite: "lax"
     }
   })
 );
@@ -41,15 +34,16 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/objects", objectRoutes);
 
+const PORT = process.env.PORT || 5000;
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
-
-    app.listen(process.env.PORT, () => {
-      console.log(`Server running on port ${process.env.PORT}`);
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((error) => {
-    console.error("MongoDB connection failed:", error.message);
+    console.error("MongoDB connection error:", error);
   });

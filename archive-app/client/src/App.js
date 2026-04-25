@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate
-} from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import api from "./api";
 import "./styles/main.scss";
 
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 import Home from "./pages/Home";
 import AddObject from "./pages/AddObject";
 import EditObject from "./pages/EditObject";
@@ -15,44 +14,66 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 
 function App() {
-  const [materials, setMaterials] = useState(() => {
-    const savedMaterials = localStorage.getItem("materials");
-    return savedMaterials ? JSON.parse(savedMaterials) : [];
-  });
+  const [objects, setObjects] = useState([]);
+  const [user, setUser] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("darkMode") === "true");
+  const [loading, setLoading] = useState(true);
 
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
-  const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem("darkMode") === "true";
-  });
-
-  useEffect(() => {
-    localStorage.setItem("materials", JSON.stringify(materials));
-  }, [materials]);
-
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
-    } else {
-      localStorage.removeItem("user");
+  const loadObjects = async () => {
+    try {
+      const res = await api.get("/objects");
+      setObjects(res.data);
+    } catch (err) {
+      console.error("Could not load objects:", err);
     }
-  }, [user]);
+  };
+
+  const checkUser = async () => {
+    try {
+      const res = await api.get("/auth/me");
+      setUser(res.data);
+    } catch {
+      setUser(null);
+    }
+  };
+
+  useEffect(() => {
+    const start = async () => {
+      await checkUser();
+      await loadObjects();
+      setLoading(false);
+    };
+
+    start();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("darkMode", darkMode);
   }, [darkMode]);
 
-  const handleLogout = () => {
-    setUser(null);
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+      setUser(null);
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
   };
+
+  if (loading) {
+    return <div className="loading-screen">Loading ARCH-IVE...</div>;
+  }
 
   return (
     <Router>
       <div className={darkMode ? "app-shell grey-mode" : "app-shell"}>
-        <Navbar user={user} setUser={setUser} handleLogout={handleLogout} />
+        <Navbar
+          user={user}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          handleLogout={handleLogout}
+        />
 
         <div className="theme-toggle">
           <label className="mode-switch">
@@ -61,33 +82,56 @@ function App() {
               checked={darkMode}
               onChange={() => setDarkMode(!darkMode)}
             />
-
             <span className="mode-slider">
               <span className="mode-icon">{darkMode ? "☾" : "☼"}</span>
             </span>
           </label>
 
-          <span className="mode-label">
-            {darkMode ? "Dark Mode" : "Light Mode"}
-          </span>
+          <span className="mode-label">{darkMode ? "Dark Mode" : "Light Mode"}</span>
         </div>
 
         <Routes>
-          <Route path="/" element={<Home materials={materials} />} />
+          <Route
+            path="/"
+            element={
+              <Home
+                objects={objects}
+                setObjects={setObjects}
+                searchTerm={searchTerm}
+                user={user}
+              />
+            }
+          />
 
-          <Route path="/collection" element={<Home materials={materials} />} />
+          <Route
+            path="/collection"
+            element={
+              <Home
+                objects={objects}
+                setObjects={setObjects}
+                searchTerm={searchTerm}
+                user={user}
+              />
+            }
+          />
 
           <Route
             path="/add"
             element={
-              <AddObject materials={materials} setMaterials={setMaterials} />
+              <ProtectedRoute user={user}>
+                <AddObject objects={objects} setObjects={setObjects} />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/edit/:id"
             element={
-              <EditObject materials={materials} setMaterials={setMaterials} />
+              user ? (
+                <EditObject setObjects={setObjects} objects={objects} />
+             ) : (
+              <Navigate to="/login" />
+            )
             }
           />
 
@@ -96,6 +140,8 @@ function App() {
 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
+
+        <Footer />
       </div>
     </Router>
   );

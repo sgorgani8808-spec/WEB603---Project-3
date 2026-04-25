@@ -1,20 +1,11 @@
-function isAuthenticated(req, res, next) {
+const isAuthenticated = (req, res, next) => {
   if (!req.session.userId) {
-    return res.status(401).json({ message: "Please log in first." });
+    return res.status(401).json({
+      message: "You must be logged in to do this."
+    });
   }
 
   next();
-}
-
-function isAdmin(req, res, next) {
-  if (req.session.role !== "admin") {
-    return res.status(403).json({ message: "Admin access only." });
-  }
-
-  next();
-}
-
-module.exports = {
-  isAuthenticated,
-  isAdmin
 };
+
+module.exports = { isAuthenticated };

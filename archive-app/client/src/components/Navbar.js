@@ -1,44 +1,41 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import api from "../api";
+import { NavLink, useNavigate } from "react-router-dom";
 
-function Navbar({ user, setUser }) {
+function Navbar({ user, searchTerm, setSearchTerm, handleLogout }) {
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    try {
-      await api.post("/auth/logout");
-      setUser(null);
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout failed");
-    }
+  const logout = async () => {
+    await handleLogout();
+    navigate("/");
   };
 
   return (
     <nav className="archive-navbar">
-      <Link className="archive-logo" to="/">
-          ARCH<span>-IVE</span>
-      </Link>
+      <NavLink to="/" className="archive-logo">
+        ARCH<span>-IVE</span>
+      </NavLink>
 
       <input
         className="archive-search"
+        type="text"
         placeholder="Search objects, collections, tags"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
       />
 
       <div className="archive-links">
-        <Link to="/">Home</Link>
-        <Link to="/">Collection</Link>
+        <NavLink to="/">Home</NavLink>
+        <NavLink to="/collection">Collection</NavLink>
 
-        {user && <Link to="/add-object">Add Object</Link>}
+        {user && <NavLink to="/add">Add Object</NavLink>}
 
-        {!user ? (
-          <>
-            <Link to="/login">Login</Link>
-            <Link to="/signup">Signup</Link>
-          </>
+        {user ? (
+          <button onClick={logout}>Logout</button>
         ) : (
-          <button onClick={handleLogout}>Logout</button>
+          <>
+            <NavLink to="/login">Login</NavLink>
+            <NavLink to="/signup">Signup</NavLink>
+          </>
         )}
       </div>
     </nav>

@@ -9,7 +9,9 @@ router.post("/signup", async (req, res) => {
     const { username, email, password } = req.body;
 
     if (!username || !email || !password) {
-      return res.status(400).json({ message: "All fields are required." });
+      return res.status(400).json({
+        message: "Username, email, and password are required."
+      });
     }
 
     if (password.length < 8) {
@@ -18,10 +20,12 @@ router.post("/signup", async (req, res) => {
       });
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
 
     if (existingUser) {
-      return res.status(400).json({ message: "Email already exists." });
+      return res.status(400).json({
+        message: "An account with this email already exists."
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -45,6 +49,7 @@ router.post("/signup", async (req, res) => {
       }
     });
   } catch (error) {
+    console.error("SIGNUP ERROR:", error);
     res.status(500).json({ message: "Signup failed." });
   }
 });
@@ -54,19 +59,25 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required." });
+      return res.status(400).json({
+        message: "Email and password are required."
+      });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid email or password." });
+      return res.status(400).json({
+        message: "Invalid email or password."
+      });
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password);
 
     if (!passwordMatches) {
-      return res.status(400).json({ message: "Invalid email or password." });
+      return res.status(400).json({
+        message: "Invalid email or password."
+      });
     }
 
     req.session.userId = user._id;
@@ -82,6 +93,7 @@ router.post("/login", async (req, res) => {
       }
     });
   } catch (error) {
+    console.error("LOGIN ERROR:", error);
     res.status(500).json({ message: "Login failed." });
   }
 });
@@ -101,8 +113,18 @@ router.get("/me", async (req, res) => {
 
     const user = await User.findById(req.session.userId).select("-password");
 
-    res.json(user);
+    if (!user) {
+      return res.status(401).json({ message: "User not found." });
+    }
+
+    res.json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role
+    });
   } catch (error) {
+    console.error("ME ERROR:", error);
     res.status(500).json({ message: "Unable to get user." });
   }
 });

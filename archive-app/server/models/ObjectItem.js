@@ -8,32 +8,55 @@ const objectItemSchema = new mongoose.Schema(
       trim: true
     },
 
+    collectionType: {
+      type: String,
+      enum: ["Material", "Furniture", "Fixture", "Article"],
+      default: "Material"
+    },
+
     category: {
       type: String,
       required: true,
       trim: true
     },
 
-    date: {
+    year: {
       type: String,
-      required: true
+      trim: true
     },
 
     description: {
       type: String,
       required: true,
-      minlength: 20
+      trim: true
     },
 
-    imageUrl: {
-      type: String,
-      default: ""
+    images: {
+      type: [String],
+      default: []
     },
+
+    comments: [
+      {
+        text: {
+          type: String,
+          required: true
+        },
+        author: {
+          type: String,
+          default: "Anonymous"
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now
+        }
+      }
+    ],
 
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      default: null
     }
   },
   { timestamps: true }

@@ -2,83 +2,138 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api";
 
-function EditObject() {
+function EditObject({ objects, setObjects }) {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     title: "",
+    collectionType: "Material",
     category: "",
-    date: "",
-    imageUrl: "",
+    year: "",
+    images: "",
     description: ""
   });
 
   const [message, setMessage] = useState("");
 
+  const categoryOptions = {
+    Material: ["Floor Tile", "Wall Tile", "Carpet", "Wood", "Stone", "Metal", "Glass", "Paint", "Textile", "Acoustic Panel"],
+    Furniture: ["Chair", "Table", "Sofa", "Storage", "Bench", "Desk", "Stool"],
+    Fixture: ["Lighting", "Plumbing", "Hardware", "Display Fixture", "Shelving", "Signage"],
+    Article: ["Case Study", "Material Research", "Design Trend", "Interview", "Technical Guide"]
+  };
+
   useEffect(() => {
-    api.get("/objects").then((response) => {
-      const selected = response.data.find((item) => item._id === id);
+    const selected = objects.find((item) => item._id === id);
 
-      if (selected) {
-        setFormData({
-          title: selected.title,
-          category: selected.category,
-          date: selected.date,
-          imageUrl: selected.imageUrl || "",
-          description: selected.description
-        });
-      }
-    });
-  }, [id]);
+    if (selected) {
+      setFormData({
+        title: selected.title || "",
+        collectionType: selected.collectionType || "Material",
+        category: selected.category || "",
+        year: selected.year || "",
+        images: Array.isArray(selected.images) ? selected.images.join("\n") : "",
+        description: selected.description || ""
+      });
+    }
+  }, [id, objects]);
 
-  const handleChange = (event) => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData({
       ...formData,
-      [event.target.name]: event.target.value
+      [name]: value,
+      ...(name === "collectionType" ? { category: "" } : {})
     });
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleDelete = async () => {
+    const confirmed = window.confirm("Delete this object?");
+
+    if (!confirmed) return;
 
     try {
-      await api.put(`/objects/${id}`, formData);
+      await api.delete(`/objects/${id}`);
+      setObjects(objects.filter((item) => item._id !== id));
       navigate("/");
-    } catch (error) {
-      setMessage(error.response?.data?.message || "Update failed.");
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Could not delete object.");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const imageArray = formData.images
+      .split("\n")
+      .map((url) => url.trim())
+      .filter((url) => url !== "");
+
+    const updatedObject = {
+      title: formData.title,
+      collectionType: formData.collectionType,
+      category: formData.category,
+      year: formData.year,
+      description: formData.description,
+      images: imageArray
+    };
+
+    try {
+      const res = await api.put(`/objects/${id}`, updatedObject);
+
+      setObjects(
+        objects.map((item) => (item._id === id ? res.data.object : item))
+      );
+
+      navigate("/");
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Could not update object.");
     }
   };
 
   return (
     <section className="add-object-card">
-      <h2>Edit Material</h2>
+      <h2>Edit Object</h2>
 
       <form onSubmit={handleSubmit}>
         <label>Title</label>
-        <input name="title" value={formData.title} onChange={handleChange} />
+        <input name="title" value={formData.title} onChange={handleChange} required />
 
-        <label>Category</label>
-        <select name="category" value={formData.category} onChange={handleChange}>
-          <option value="">Select category</option>
-          <option value="Floor Tile">Floor Tile</option>
-          <option value="Wall Tile">Wall Tile</option>
-          <option value="Carpet">Carpet</option>
-          <option value="Wood">Wood</option>
-          <option value="Stone">Stone</option>
-          <option value="Metal">Metal</option>
-          <option value="Glass">Glass</option>
-          <option value="Paint">Paint</option>
-          <option value="Textile">Textile</option>
-          <option value="Acoustic Panel">Acoustic Panel</option>
-          <option value="Sustainable Material">Sustainable Material</option>
+        <label>Collection Type</label>
+        <select
+          name="collectionType"
+          value={formData.collectionType}
+          onChange={handleChange}
+        >
+          <option value="Material">Material</option>
+          <option value="Furniture">Furniture</option>
+          <option value="Fixture">Fixture</option>
+          <option value="Article">Article</option>
         </select>
 
-        <label>Date</label>
-        <input name="date" value={formData.date} onChange={handleChange} />
+        <label>Category</label>
+        <select name="category" value={formData.category} onChange={handleChange} required>
+          <option value="">Select category</option>
+          {categoryOptions[formData.collectionType].map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
 
-        <label>Image URL</label>
-        <input name="imageUrl" value={formData.imageUrl} onChange={handleChange} />
+        <label>Year</label>
+        <input name="year" value={formData.year} onChange={handleChange} />
+
+        <label>Image URLs</label>
+        <textarea
+          name="images"
+          rows="5"
+          value={formData.images}
+          onChange={handleChange}
+          placeholder="Paste one image URL per line"
+        />
 
         <label>Description</label>
         <textarea
@@ -86,9 +141,15 @@ function EditObject() {
           rows="6"
           value={formData.description}
           onChange={handleChange}
+          required
         />
 
-        <button type="submit">Update Material</button>
+        <div className="form-actions">
+          <button type="submit">Update Object</button>
+          <button type="button" className="danger-btn" onClick={handleDelete}>
+            Delete Object
+          </button>
+        </div>
       </form>
 
       {message && <p className="message">{message}</p>}

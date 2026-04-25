@@ -12,59 +12,60 @@ function Login({ setUser }) {
 
   const [message, setMessage] = useState("");
 
-  const handleChange = (event) => {
+  const handleChange = (e) => {
     setFormData({
       ...formData,
-      [event.target.name]: event.target.value
+      [e.target.name]: e.target.value
     });
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    if (!formData.email || !formData.password) {
-      setMessage("Email and password are required.");
-      return;
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     try {
-      const response = await api.post("/auth/login", formData);
-      setUser(response.data.user);
-      navigate("/add-object");
-    } catch (error) {
-      setMessage(error.response?.data?.message || "Login failed.");
+      const res = await api.post("/auth/login", formData);
+      setUser(res.data.user);
+      navigate("/");
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Login failed.");
     }
   };
 
   return (
-    <section className="auth-card">
-      <h2>Sign in to Archive</h2>
+    <section className="auth-page">
+      <div className="auth-panel">
+        <div className="auth-line"></div>
 
-      <form onSubmit={handleSubmit}>
-        <label>Email</label>
-        <input
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-        />
+        <h2>Sign in to Archive</h2>
 
-        <label>Password</label>
-        <input
-          name="password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange}
-        />
+        <form onSubmit={handleSubmit}>
+          <label>Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
 
-        <button type="submit">Login</button>
-      </form>
+          <label>Password</label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
 
-      {message && <p className="message">{message}</p>}
+          <button type="submit">Login</button>
+        </form>
 
-      <p>
-        Do not have an account? <Link to="/signup">Sign up</Link>
-      </p>
+        {message && <p className="message">{message}</p>}
+
+        <p className="auth-note">
+          Do not have an account? <Link to="/signup">Sign up</Link>
+        </p>
+      </div>
     </section>
   );
 }

@@ -13,71 +13,68 @@ function Signup({ setUser }) {
 
   const [message, setMessage] = useState("");
 
-  const handleChange = (event) => {
+  const handleChange = (e) => {
     setFormData({
       ...formData,
-      [event.target.name]: event.target.value
+      [e.target.name]: e.target.value
     });
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    if (!formData.username || !formData.email || !formData.password) {
-      setMessage("All fields are required.");
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      setMessage("Password must be at least 8 characters.");
-      return;
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     try {
-      const response = await api.post("/auth/signup", formData);
-      setUser(response.data.user);
-      navigate("/add-object");
-    } catch (error) {
-      setMessage(error.response?.data?.message || "Signup failed.");
+      const res = await api.post("/auth/signup", formData);
+      setUser(res.data.user);
+      navigate("/");
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Signup failed.");
     }
   };
 
   return (
-    <section className="auth-card">
-      <h2>Create Archive Account</h2>
+    <section className="auth-page">
+      <div className="auth-panel">
+        <div className="auth-line"></div>
 
-      <form onSubmit={handleSubmit}>
-        <label>Username</label>
-        <input
-          name="username"
-          value={formData.username}
-          onChange={handleChange}
-        />
+        <h2>Create Archive Account</h2>
 
-        <label>Email</label>
-        <input
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-        />
+        <form onSubmit={handleSubmit}>
+          <label>Username</label>
+          <input
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            required
+          />
 
-        <label>Password</label>
-        <input
-          name="password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange}
-        />
+          <label>Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
 
-        <button type="submit">Sign Up</button>
-      </form>
+          <label>Password</label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
 
-      {message && <p className="message">{message}</p>}
+          <button type="submit">Sign Up</button>
+        </form>
 
-      <p>
-        Already have an account? <Link to="/login">Login</Link>
-      </p>
+        {message && <p className="message">{message}</p>}
+
+        <p className="auth-note">
+          Already have an account? <Link to="/login">Login</Link>
+        </p>
+      </div>
     </section>
   );
 }
