@@ -4,27 +4,32 @@ const User = require("../models/User");
 
 const router = express.Router();
 
+/* ========================
+   SIGNUP
+======================== */
 router.post("/signup", async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
     if (!username || !email || !password) {
       return res.status(400).json({
-        message: "Username, email, and password are required."
+        message: "All fields are required."
       });
     }
 
-    if (password.length < 8) {
+    if (password.length < 6) {
       return res.status(400).json({
-        message: "Password must be at least 8 characters."
+        message: "Password must be at least 6 characters."
       });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({
+      email: email.toLowerCase()
+    });
 
     if (existingUser) {
       return res.status(400).json({
-        message: "An account with this email already exists."
+        message: "Email already exists."
       });
     }
 
@@ -37,15 +42,13 @@ router.post("/signup", async (req, res) => {
     });
 
     req.session.userId = newUser._id;
-    req.session.role = newUser.role;
 
     res.status(201).json({
-      message: "Signup successful.",
+      message: "Signup successful",
       user: {
         id: newUser._id,
         username: newUser.username,
-        email: newUser.email,
-        role: newUser.role
+        email: newUser.email
       }
     });
   } catch (error) {
@@ -54,42 +57,45 @@ router.post("/signup", async (req, res) => {
   }
 });
 
+/* ========================
+   LOGIN
+======================== */
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
-        message: "Email and password are required."
+        message: "Email and password required."
       });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({
+      email: email.toLowerCase()
+    });
 
     if (!user) {
       return res.status(400).json({
-        message: "Invalid email or password."
+        message: "Invalid credentials."
       });
     }
 
-    const passwordMatches = await bcrypt.compare(password, user.password);
+    const match = await bcrypt.compare(password, user.password);
 
-    if (!passwordMatches) {
+    if (!match) {
       return res.status(400).json({
-        message: "Invalid email or password."
+        message: "Invalid credentials."
       });
     }
 
     req.session.userId = user._id;
-    req.session.role = user.role;
 
     res.json({
-      message: "Login successful.",
+      message: "Login successful",
       user: {
         id: user._id,
         username: user.username,
-        email: user.email,
-        role: user.role
+        email: user.email
       }
     });
   } catch (error) {
@@ -98,34 +104,43 @@ router.post("/login", async (req, res) => {
   }
 });
 
+/* ========================
+   LOGOUT
+======================== */
 router.post("/logout", (req, res) => {
   req.session.destroy(() => {
     res.clearCookie("connect.sid");
-    res.json({ message: "Logout successful." });
+    res.json({ message: "Logged out" });
   });
 });
 
+/* ========================
+   CURRENT USER
+======================== */
 router.get("/me", async (req, res) => {
   try {
     if (!req.session.userId) {
-      return res.status(401).json({ message: "Not logged in." });
+      return res.status(401).json({
+        message: "Not logged in"
+      });
     }
 
     const user = await User.findById(req.session.userId).select("-password");
 
     if (!user) {
-      return res.status(401).json({ message: "User not found." });
+      return res.status(401).json({
+        message: "User not found"
+      });
     }
 
     res.json({
       id: user._id,
       username: user.username,
-      email: user.email,
-      role: user.role
+      email: user.email
     });
   } catch (error) {
     console.error("ME ERROR:", error);
-    res.status(500).json({ message: "Unable to get user." });
+    res.status(500).json({ message: "Error fetching user." });
   }
 });
 

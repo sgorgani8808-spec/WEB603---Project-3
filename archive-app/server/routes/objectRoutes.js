@@ -1,15 +1,14 @@
 const express = require("express");
 const ObjectItem = require("../models/ObjectItem");
 const { isAuthenticated } = require("../middleware/authMiddleware");
-
 const router = express.Router();
 
+/* ========================
+   GET ALL OBJECTS
+======================== */
 router.get("/", async (req, res) => {
   try {
-    const objects = await ObjectItem.find()
-      .populate("createdBy", "username email")
-      .sort({ createdAt: -1 });
-
+    const objects = await ObjectItem.find().sort({ createdAt: -1 });
     res.json(objects);
   } catch (error) {
     console.error("GET OBJECTS ERROR:", error);
@@ -17,26 +16,17 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", isAuthenticated, async (req, res) => {
+/* ========================
+   CREATE OBJECT
+======================== */
+router.post("/",isAuthenticated, async (req, res) => {
   try {
     const { title, collectionType, category, year, description, images } =
       req.body;
 
-    if (!title || title.trim().length < 3) {
+    if (!title || !category || !description) {
       return res.status(400).json({
-        message: "Title must be at least 3 characters."
-      });
-    }
-
-    if (!category) {
-      return res.status(400).json({
-        message: "Category is required."
-      });
-    }
-
-    if (!description || description.trim().length < 20) {
-      return res.status(400).json({
-        message: "Description must be at least 20 characters."
+        message: "Title, category and description are required."
       });
     }
 
@@ -47,19 +37,22 @@ router.post("/", isAuthenticated, async (req, res) => {
       year,
       description,
       images: images || [],
-      createdBy: req.session.userId
+      createdBy: req.session.userId || null
     });
 
     res.status(201).json({
-      message: "Object added successfully.",
+      message: "Object added",
       object
     });
   } catch (error) {
-    console.error("POST OBJECT ERROR:", error);
+    console.error("POST ERROR:", error);
     res.status(500).json({ message: "Could not add object." });
   }
 });
 
+/* ========================
+   UPDATE OBJECT (EDIT)
+======================== */
 router.put("/:id", isAuthenticated, async (req, res) => {
   try {
     const { title, collectionType, category, year, description, images } =
@@ -68,28 +61,8 @@ router.put("/:id", isAuthenticated, async (req, res) => {
     const object = await ObjectItem.findById(req.params.id);
 
     if (!object) {
-      return res.status(404).json({ message: "Object not found." });
-    }
-
-    if (
-      object.createdBy &&
-      object.createdBy.toString() !== req.session.userId &&
-      req.session.role !== "admin"
-    ) {
-      return res.status(403).json({
-        message: "You can only edit objects you created."
-      });
-    }
-
-    if (!title || title.trim().length < 3) {
-      return res.status(400).json({
-        message: "Title must be at least 3 characters."
-      });
-    }
-
-    if (!description || description.trim().length < 20) {
-      return res.status(400).json({
-        message: "Description must be at least 20 characters."
+      return res.status(404).json({
+        message: "Object not found"
       });
     }
 
@@ -103,56 +76,60 @@ router.put("/:id", isAuthenticated, async (req, res) => {
     await object.save();
 
     res.json({
-      message: "Object updated successfully.",
+      message: "Updated successfully",
       object
     });
   } catch (error) {
-    console.error("PUT OBJECT ERROR:", error);
-    res.status(500).json({ message: "Could not update object." });
+    console.error("UPDATE ERROR:", error);
+    res.status(500).json({
+      message: "Could not update object."
+    });
   }
 });
 
-router.delete("/:id", isAuthenticated, async (req, res) => {
+/* ========================
+   DELETE OBJECT
+======================== */
+router.delete("/:id", isAuthenticated, async (req, res)=> {
   try {
     const object = await ObjectItem.findById(req.params.id);
 
     if (!object) {
-      return res.status(404).json({ message: "Object not found." });
-    }
-
-    if (
-      object.createdBy &&
-      object.createdBy.toString() !== req.session.userId &&
-      req.session.role !== "admin"
-    ) {
-      return res.status(403).json({
-        message: "You can only delete objects you created."
+      return res.status(404).json({
+        message: "Object not found"
       });
     }
 
     await object.deleteOne();
 
-    res.json({ message: "Object deleted successfully." });
+    res.json({ message: "Deleted successfully" });
   } catch (error) {
-    console.error("DELETE OBJECT ERROR:", error);
-    res.status(500).json({ message: "Could not delete object." });
+    console.error("DELETE ERROR:", error);
+    res.status(500).json({
+      message: "Could not delete object."
+    });
   }
 });
 
-router.post("/:id/comments", isAuthenticated, async (req, res) => {
+/* ========================
+   COMMENTS
+======================== */
+router.post("/:id/comments", async (req, res) => {
   try {
     const { text, author } = req.body;
 
     if (!text || text.trim().length < 2) {
       return res.status(400).json({
-        message: "Comment must be at least 2 characters."
+        message: "Comment too short"
       });
     }
 
     const object = await ObjectItem.findById(req.params.id);
 
     if (!object) {
-      return res.status(404).json({ message: "Object not found." });
+      return res.status(404).json({
+        message: "Object not found"
+      });
     }
 
     object.comments.push({
@@ -162,13 +139,15 @@ router.post("/:id/comments", isAuthenticated, async (req, res) => {
 
     await object.save();
 
-    res.status(201).json({
-      message: "Comment added.",
+    res.json({
+      message: "Comment added",
       object
     });
   } catch (error) {
     console.error("COMMENT ERROR:", error);
-    res.status(500).json({ message: "Could not add comment." });
+    res.status(500).json({
+      message: "Could not add comment"
+    });
   }
 });
 

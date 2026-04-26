@@ -2,9 +2,16 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api";
 
-function EditObject({ objects, setObjects }) {
+function EditObject({ objects = [], setObjects }) {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  const categoryOptions = {
+    Material: ["Floor Tile", "Wall Tile", "Carpet", "Wood", "Stone", "Metal", "Glass", "Paint", "Textile", "Acoustic Panel"],
+    Furniture: ["Chair", "Table", "Sofa", "Storage", "Bench", "Desk", "Stool"],
+    Fixture: ["Lighting", "Plumbing", "Hardware", "Display Fixture", "Shelving", "Signage"],
+    Article: ["Case Study", "Material Research", "Design Trend", "Interview", "Technical Guide"]
+  };
 
   const [formData, setFormData] = useState({
     title: "",
@@ -17,26 +24,42 @@ function EditObject({ objects, setObjects }) {
 
   const [message, setMessage] = useState("");
 
-  const categoryOptions = {
-    Material: ["Floor Tile", "Wall Tile", "Carpet", "Wood", "Stone", "Metal", "Glass", "Paint", "Textile", "Acoustic Panel"],
-    Furniture: ["Chair", "Table", "Sofa", "Storage", "Bench", "Desk", "Stool"],
-    Fixture: ["Lighting", "Plumbing", "Hardware", "Display Fixture", "Shelving", "Signage"],
-    Article: ["Case Study", "Material Research", "Design Trend", "Interview", "Technical Guide"]
-  };
-
   useEffect(() => {
-    const selected = objects.find((item) => item._id === id);
+    const loadObject = async () => {
+      try {
+        let selected = objects.find((item) => item._id === id);
 
-    if (selected) {
-      setFormData({
-        title: selected.title || "",
-        collectionType: selected.collectionType || "Material",
-        category: selected.category || "",
-        year: selected.year || "",
-        images: Array.isArray(selected.images) ? selected.images.join("\n") : "",
-        description: selected.description || ""
-      });
-    }
+        if (!selected) {
+          const res = await api.get("/objects");
+          selected = res.data.find((item) => item._id === id);
+        }
+
+        if (!selected) {
+          setMessage("Object not found.");
+          return;
+        }
+
+        const cleanCollectionType =
+          selected.collectionType === "Materials"
+            ? "Material"
+            : selected.collectionType || "Material";
+
+        setFormData({
+          title: selected.title || "",
+          collectionType: cleanCollectionType,
+          category: selected.category || "",
+          year: selected.year || selected.date || "",
+          images: Array.isArray(selected.images)
+            ? selected.images.join("\n")
+            : selected.imageUrl || "",
+          description: selected.description || ""
+        });
+      } catch (error) {
+        setMessage("Could not load object.");
+      }
+    };
+
+    loadObject();
   }, [id, objects]);
 
   const handleChange = (e) => {
@@ -47,20 +70,6 @@ function EditObject({ objects, setObjects }) {
       [name]: value,
       ...(name === "collectionType" ? { category: "" } : {})
     });
-  };
-
-  const handleDelete = async () => {
-    const confirmed = window.confirm("Delete this object?");
-
-    if (!confirmed) return;
-
-    try {
-      await api.delete(`/objects/${id}`);
-      setObjects(objects.filter((item) => item._id !== id));
-      navigate("/");
-    } catch (err) {
-      setMessage(err.response?.data?.message || "Could not delete object.");
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -83,8 +92,8 @@ function EditObject({ objects, setObjects }) {
     try {
       const res = await api.put(`/objects/${id}`, updatedObject);
 
-      setObjects(
-        objects.map((item) => (item._id === id ? res.data.object : item))
+      setObjects((prev) =>
+        prev.map((item) => (item._id === id ? res.data.object : item))
       );
 
       navigate("/");
@@ -93,13 +102,34 @@ function EditObject({ objects, setObjects }) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this object?")) return;
+
+    try {
+      await api.delete(`/objects/${id}`);
+
+      setObjects((prev) => prev.filter((item) => item._id !== id));
+
+      navigate("/");
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Could not delete object.");
+    }
+  };
+
   return (
     <section className="add-object-card">
       <h2>Edit Object</h2>
 
+      {message && <p className="message">{message}</p>}
+
       <form onSubmit={handleSubmit}>
         <label>Title</label>
-        <input name="title" value={formData.title} onChange={handleChange} required />
+        <input
+          name="title"
+          value={formData.title}
+          onChange={handleChange}
+          required
+        />
 
         <label>Collection Type</label>
         <select
@@ -114,17 +144,28 @@ function EditObject({ objects, setObjects }) {
         </select>
 
         <label>Category</label>
-        <select name="category" value={formData.category} onChange={handleChange} required>
+        <select
+          name="category"
+          value={formData.category}
+          onChange={handleChange}
+          required
+        >
           <option value="">Select category</option>
-          {categoryOptions[formData.collectionType].map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
+          {(categoryOptions[formData.collectionType] || categoryOptions.Material).map(
+            (category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            )
+          )}
         </select>
 
         <label>Year</label>
-        <input name="year" value={formData.year} onChange={handleChange} />
+        <input
+          name="year"
+          value={formData.year}
+          onChange={handleChange}
+        />
 
         <label>Image URLs</label>
         <textarea
@@ -146,13 +187,12 @@ function EditObject({ objects, setObjects }) {
 
         <div className="form-actions">
           <button type="submit">Update Object</button>
+
           <button type="button" className="danger-btn" onClick={handleDelete}>
             Delete Object
           </button>
         </div>
       </form>
-
-      {message && <p className="message">{message}</p>}
     </section>
   );
 }

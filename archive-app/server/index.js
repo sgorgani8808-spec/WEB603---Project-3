@@ -9,9 +9,14 @@ const objectRoutes = require("./routes/objectRoutes");
 
 const app = express();
 
+const PORT = process.env.PORT || 5000;
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
+
+app.set("trust proxy", 1);
+
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: CLIENT_URL,
     credentials: true
   })
 );
@@ -24,26 +29,29 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      sameSite: "lax"
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
     }
   })
 );
 
+app.get("/", (req, res) => {
+  res.send("ARCH-IVE API is running");
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/objects", objectRoutes);
 
-const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
   })
   .catch((error) => {
-    console.error("MongoDB connection error:", error);
+    console.error("MongoDB connection error:", error.message);
   });

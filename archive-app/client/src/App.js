@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate
+} from "react-router-dom";
+
 import api from "./api";
 import "./styles/main.scss";
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import ProtectedRoute from "./components/ProtectedRoute";
-
 import Home from "./pages/Home";
 import AddObject from "./pages/AddObject";
 import EditObject from "./pages/EditObject";
@@ -17,35 +21,31 @@ function App() {
   const [objects, setObjects] = useState([]);
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("darkMode") === "true");
-  const [loading, setLoading] = useState(true);
-
-  const loadObjects = async () => {
-    try {
-      const res = await api.get("/objects");
-      setObjects(res.data);
-    } catch (err) {
-      console.error("Could not load objects:", err);
-    }
-  };
-
-  const checkUser = async () => {
-    try {
-      const res = await api.get("/auth/me");
-      setUser(res.data);
-    } catch {
-      setUser(null);
-    }
-  };
+  const [darkMode, setDarkMode] = useState(
+    localStorage.getItem("darkMode") === "true"
+  );
 
   useEffect(() => {
-    const start = async () => {
-      await checkUser();
-      await loadObjects();
-      setLoading(false);
+    const loadObjects = async () => {
+      try {
+        const res = await api.get("/objects");
+        setObjects(res.data);
+      } catch (err) {
+        console.error("Could not load objects:", err);
+      }
     };
 
-    start();
+    const checkUser = async () => {
+      try {
+        const res = await api.get("/auth/me");
+        setUser(res.data);
+      } catch {
+        setUser(null);
+      }
+    };
+
+    loadObjects();
+    checkUser();
   }, []);
 
   useEffect(() => {
@@ -60,10 +60,6 @@ function App() {
       console.error("Logout failed:", err);
     }
   };
-
-  if (loading) {
-    return <div className="loading-screen">Loading ARCH-IVE...</div>;
-  }
 
   return (
     <Router>
@@ -87,7 +83,9 @@ function App() {
             </span>
           </label>
 
-          <span className="mode-label">{darkMode ? "Dark Mode" : "Light Mode"}</span>
+          <span className="mode-label">
+            {darkMode ? "Dark Mode" : "Light Mode"}
+          </span>
         </div>
 
         <Routes>
@@ -118,9 +116,11 @@ function App() {
           <Route
             path="/add"
             element={
-              <ProtectedRoute user={user}>
+              user ? (
                 <AddObject objects={objects} setObjects={setObjects} />
-              </ProtectedRoute>
+              ) : (
+                <Navigate to="/login" />
+              )
             }
           />
 
@@ -128,10 +128,10 @@ function App() {
             path="/edit/:id"
             element={
               user ? (
-                <EditObject setObjects={setObjects} objects={objects} />
-             ) : (
-              <Navigate to="/login" />
-            )
+                <EditObject objects={objects} setObjects={setObjects} />
+              ) : (
+                <Navigate to="/login" />
+              )
             }
           />
 
